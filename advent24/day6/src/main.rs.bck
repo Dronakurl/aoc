@@ -1,0 +1,229 @@
+#![allow(dead_code)]
+use std::env;
+use std::fmt::Display;
+use std::fs::File;
+use std::io::Read;
+use std::time::Instant;
+
+// ....#.....
+// .........#
+// ..........
+// ..#.......
+// .......#..
+// ..........
+// .#..^.....
+// ........#.
+// #.........
+// ......#...
+
+struct State {
+    field: Vec<Vec<bool>>,
+    cursor: [u16; 2],
+    path: Vec<[u16; 2]>,
+    direction: Direction,
+    walk_counter: u32,
+}
+
+#[derive(PartialEq)]
+enum Direction {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+#[derive(PartialEq)]
+enum Position {
+    Blocked,
+    OutOfBounds,
+    Cursor([u16; 2]),
+}
+
+impl State {
+    fn read_file(file_name: &str) -> std::io::Result<State> {
+        let contents = read_file(file_name)?;
+        let mut field = Vec::new();
+        let mut cursor: [u16; 2] = [0, 0];
+        for (nrow, line) in contents.lines().enumerate() {
+            let mut row = Vec::new();
+            for (col, c) in line.chars().enumerate() {
+                row.push(c == '#');
+                if c == '^' {
+                    cursor = [nrow as u16, col as u16];
+                }
+            }
+            field.push(row);
+        }
+        Ok(State {
+            field,
+            cursor,
+            path: vec![cursor],
+            direction: Direction::Up,
+            walk_counter: 0,
+        })
+    }
+
+    fn turn_right(&mut self) {
+        match self.direction {
+            Direction::Up => self.direction = Direction::Right,
+            Direction::Down => self.direction = Direction::Left,
+            Direction::Left => self.direction = Direction::Up,
+            Direction::Right => self.direction = Direction::Down,
+        }
+    }
+
+    fn get_position(&self, cursor: [u16; 2]) -> Position {
+        if cursor[0] >= self.field.len() as u16 || cursor[1] >= self.field[0].len() as u16 {
+            Position::OutOfBounds
+        } else if self.field[cursor[0] as usize][cursor[1] as usize] {
+            Position::Blocked
+        } else {
+            Position::Cursor(cursor)
+        }
+    }
+
+    fn get_next(&self) -> Position {
+        let mut next = self.cursor;
+        match self.direction {
+            Direction::Up => {
+                if next[0] == 0 {
+                    return Position::OutOfBounds;
+                };
+                next[0] -= 1
+            }
+            Direction::Down => next[0] += 1,
+            Direction::Left => {
+                if next[1] == 0 {
+                    return Position::OutOfBounds;
+                };
+                next[1] -= 1
+            }
+            Direction::Right => next[1] += 1,
+        }
+        self.get_position(next)
+    }
+
+    fn walk_one(&mut self) -> Position {
+        let pos = self.get_next();
+        match pos {
+            Position::Blocked => {
+                self.turn_right();
+            }
+            Position::OutOfBounds => {
+                self.walk_counter += 1;
+                self.path.push(self.cursor);
+            }
+            Position::Cursor(cur) => {
+                self.path.push(self.cursor);
+                self.walk_counter += 1;
+                self.cursor = cur;
+            }
+        }
+        pos
+    }
+
+    fn at_start(&self) -> bool {
+        self.cursor == self.path[0] && self.direction == Direction::Up
+    }
+
+    fn remove_row_lines(&self) {
+        let rows = self.field.len();
+        // remove so many lines from the terminal output (move up)
+        print!("\x1b[{}A", rows + 1);
+    }
+
+    fn print_empty_lines(&self) {
+        let rows = self.field.len();
+        for _ in 0..rows {
+            println!();
+        }
+    }
+
+    fn count_unique(&self) -> usize {
+        // unique coordinates in path
+        self.path
+            .iter()
+            .collect::<std::collections::HashSet<_>>()
+            .len()
+    }
+
+    fn walk(&mut self, display: bool) {
+        // get log_level
+        // let logit: bool = matches!(
+        //     env::var("RUST_LOG").unwrap_or("info".to_string()).as_str(),
+        //     "debug" | "trace"
+        // );
+        // if logit {
+        //     log::info!("Starting walk");
+        //     self.print_empty_lines();
+        // }
+        loop {
+            let next = self.walk_one();
+            if next == Position::OutOfBounds {
+                break;
+            }
+            if display {
+                self.remove_row_lines();
+                // wait for half a second
+                std::thread::sleep(std::time::Duration::from_millis(100));
+                println!("{}", self);
+            }
+            if self.at_start() {
+                break;
+            }
+        }
+        println!("walked {} steps", self.walk_counter);
+    }
+}
+
+impl Display for State {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        for (nrow, row) in self.field.iter().enumerate() {
+            for (ncol, cell) in row.iter().enumerate() {
+                if self.cursor == [nrow as u16, ncol as u16] {
+                    write!(f, "👠")?;
+                } else if self.path.contains(&[nrow as u16, ncol as u16]) {
+                    write!(f, "💣")?;
+                } else if *cell {
+                    write!(f, "🪨")?;
+                } else {
+                    write!(f, "..")?;
+                }
+            }
+            if nrow == self.field.len() - 1 {
+                write!(f, " {} {}", self.walk_counter, self.count_unique())?;
+            }
+            writeln!(f)?;
+        }
+        Ok(())
+    }
+}
+
+pub fn read_file(file_name: &str) -> std::io::Result<String> {
+    log::info!("Attempting to read file: {}", file_name);
+    let mut file = File::open(file_name)?;
+    let mut contents = String::new();
+    if let Err(e) = file.read_to_string(&mut contents) {
+        log::error!("Failed to read file: {}", e);
+        return Err(e);
+    }
+    log::info!("Successfully read file: {}", file_name);
+    Ok(contents)
+}
+
+fn main() {
+    let start = Instant::now();
+    env_logger::init();
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        log::error!("Please provide a filename as a command line argument.");
+        return;
+    }
+    let mut s = State::read_file(&args[1]).unwrap();
+    // log::info!("state: {}", s);
+
+    s.walk(false);
+    println!("{}", s.count_unique());
+
+    log::info!("time elapsed: {:?}", start.elapsed());
+}
