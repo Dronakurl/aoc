@@ -31,7 +31,7 @@ impl Map {
             .lines()
             .map(|line| {
                 line.chars()
-                    .map(|c| c.to_string().parse::<u8>().unwrap())
+                    .map(|c| c.to_string().parse::<u8>().unwrap_or(0))
                     .collect()
             })
             .collect();
@@ -121,7 +121,7 @@ impl Map {
     fn search_trails(&self, trailhead: (usize, usize)) -> Vec<(usize, usize)> {
         let mut result = Vec::new();
         let mut q = VecDeque::new();
-        let mut visited = vec![vec![false; self.width]; self.height]; // Assuming self.width and self.height are defined
+        let mut visited = vec![vec![false; self.width]; self.height];
         q.push_back(trailhead);
         visited[trailhead.0][trailhead.1] = true;
 
@@ -145,6 +145,32 @@ impl Map {
         self.get_trailheads()
             .par_iter()
             .map(|&trailhead| self.search_trails(trailhead).len())
+            .collect()
+    }
+
+    fn search_trails2(&self, trailhead: (usize, usize)) -> Vec<(usize, usize)> {
+        let mut result = Vec::new();
+        let mut q = VecDeque::new();
+        q.push_back(trailhead);
+
+        while let Some(next) = q.pop_back() {
+            log::trace!("next: {:?}", next);
+            for n in self.get_valid_next(next.0, next.1) {
+                log::trace!("new: {:?}", n);
+                q.push_back(n);
+            }
+            if self.get(next.0, next.1) == Some(9) {
+                result.push(next);
+            }
+        }
+        result
+    }
+
+    fn search_all_trails2(&self) -> Vec<usize> {
+        use rayon::prelude::*;
+        self.get_trailheads()
+            .par_iter()
+            .map(|&trailhead| self.search_trails2(trailhead).len())
             .collect()
     }
 }
@@ -188,6 +214,8 @@ fn main() {
     let map = Map::read_file(&args[1]);
     log::debug!("{}", map);
     let res = map.search_all_trails();
+    log::info!("Result: {:?}", res.iter().sum::<usize>());
+    let res = map.search_all_trails2();
     log::info!("Result: {:?}", res.iter().sum::<usize>());
 
     log::info!("time elapsed: {:?}", start.elapsed());
