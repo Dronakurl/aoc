@@ -111,4 +111,21 @@ fn main() {
     println!("{:b}", inverted);
     // Result
     println!("{}", inverted * result);
+
+    let numbers: Vec<i32> = numbers.iter().map(|x| x.number).collect();
+    let n = *number_of_bits;
+    let number_of_first_bits: Vec<i32> = numbers.iter().map(|x| (x >> (n - 1)) & 1).collect();
+    println!("{:?}", number_of_first_bits);
+    let mut filtered_numbers: Vec<i32> = numbers;
+
+    for n in (0..*number_of_bits).rev() {
+        println!(
+            "bit position {}, remaining numbers: {}",
+            n,
+            filtered_numbers.len()
+        );
+        filtered_numbers.retain(|x| ((x >> n) & 1) > 0);
+        println!("  after filtering for bit {}: {:?}", n, filtered_numbers);
+    }
+    println!("final filtered numbers {:?}", filtered_numbers);
 }
