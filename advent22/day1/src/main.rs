@@ -37,7 +37,7 @@ fn main() {
     let numbers = match read_numbers_from_file(&args.filename) {
         Ok(numbers) => {
             println!("Read {} numbers from file:", numbers.len());
-            println!("{numbers:?}");
+            println!("number of numbers: {:?}", numbers.len());
             numbers
         }
         Err(e) => {
@@ -47,4 +47,7 @@ fn main() {
     };
     let increases = numbers.windows(2).filter(|w| w[1] > w[0]).count();
     println!("increases: {increases:?}");
+    let sums: Vec<i32> = numbers.windows(3).map(|w| w.iter().sum()).collect();
+    let sum_increases = sums.windows(2).filter(|w| w[1] > w[0]).count();
+    println!("sum of increases in 3 windows: {sum_increases:?}");
 }
