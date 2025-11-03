@@ -40,6 +40,35 @@ impl std::str::FromStr for Binary {
     }
 }
 
+struct BinaryVec(Vec<i32>);
+
+impl std::ops::Deref for BinaryVec {
+    type Target = [i32];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for BinaryVec {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl std::fmt::Binary for BinaryVec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[")?;
+        for (i, n) in self.iter().enumerate() {
+            if i > 0 {
+                write!(f, ", ")?;
+            }
+            write!(f, "{n:b}")?;
+        }
+        write!(f, "]")
+    }
+}
+
 fn read_binary_numbers_from_file<P: AsRef<Path>>(
     path: P,
     number_of_bits: &mut u8,
@@ -109,14 +138,14 @@ fn main() {
     // print in binary
     println!("{result:b}");
     println!("{inverted:b}");
-    // Result
-    println!("{}", inverted * result);
+    println!("result of the first {}", inverted * result);
+
+    // let n = *number_of_bits;
+    // let number_of_first_bits: Vec<i32> = numbers.iter().map(|x| (x >> (n - 1)) & 1).collect();
+    // println!("{number_of_first_bits:?}");
 
     let numbers: Vec<i32> = numbers.iter().map(|x| x.number).collect();
-    let n = *number_of_bits;
-    let number_of_first_bits: Vec<i32> = numbers.iter().map(|x| (x >> (n - 1)) & 1).collect();
-    println!("{number_of_first_bits:?}");
-    let mut filtered_numbers: Vec<i32> = numbers;
+    let mut filtered_numbers = BinaryVec(numbers);
 
     for n in (0..*number_of_bits).rev() {
         println!(
@@ -124,8 +153,8 @@ fn main() {
             n,
             filtered_numbers.len()
         );
-        filtered_numbers.retain(|x| ((x >> n) & 1) > 0);
-        println!("  after filtering for bit {n}: {filtered_numbers:?}");
+        filtered_numbers.0.retain(|x| ((x >> n) & 1) == ((result as i32 >> n) & 1));
+        println!("  after filtering for bit {n}: {filtered_numbers:b}");
     }
-    println!("final filtered numbers {filtered_numbers:?}");
+    println!("final filtered numbers {filtered_numbers:b}");
 }
