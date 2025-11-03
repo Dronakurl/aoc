@@ -81,8 +81,8 @@ fn main() {
 
     // Process instructions here
     println!("{:?} numbers parsed", numbers.len());
-    println!("{} bits per number", number_of_bits);
-    println!("{:?}", numbers);
+    println!("{number_of_bits} bits per number");
+    println!("{numbers:?}");
 
     // Threshhold count: half of the number of bits
     let threshhold = numbers.len() / 2;
@@ -95,27 +95,27 @@ fn main() {
         if count > threshhold {
             result |= 1 << n;
         }
-        println!("{}: {}", n, count);
+        println!("{n}: {count}");
     }
 
     // Bitwise invert, but only the first number of bits
     let mask = (1u64 << *number_of_bits) - 1;
-    println!("mask {:b}", mask);
+    println!("mask {mask:b}");
     let inverted = (!result) & mask;
 
-    println!("{}", result);
-    println!("{}", inverted);
+    println!("{result}");
+    println!("{inverted}");
 
     // print in binary
-    println!("{:b}", result);
-    println!("{:b}", inverted);
+    println!("{result:b}");
+    println!("{inverted:b}");
     // Result
     println!("{}", inverted * result);
 
     let numbers: Vec<i32> = numbers.iter().map(|x| x.number).collect();
     let n = *number_of_bits;
     let number_of_first_bits: Vec<i32> = numbers.iter().map(|x| (x >> (n - 1)) & 1).collect();
-    println!("{:?}", number_of_first_bits);
+    println!("{number_of_first_bits:?}");
     let mut filtered_numbers: Vec<i32> = numbers;
 
     for n in (0..*number_of_bits).rev() {
@@ -125,7 +125,7 @@ fn main() {
             filtered_numbers.len()
         );
         filtered_numbers.retain(|x| ((x >> n) & 1) > 0);
-        println!("  after filtering for bit {}: {:?}", n, filtered_numbers);
+        println!("  after filtering for bit {n}: {filtered_numbers:?}");
     }
-    println!("final filtered numbers {:?}", filtered_numbers);
+    println!("final filtered numbers {filtered_numbers:?}");
 }
