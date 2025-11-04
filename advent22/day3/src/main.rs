@@ -77,23 +77,19 @@ impl BinaryVec {
         self.0.retain(f);
     }
 
-    fn count_bits_at_position(&self, bit_position: u8) -> usize {
+    fn get_most_common_bit(&self, bit_position: u8) -> usize {
         self.0
             .iter()
             .map(|number| number.get_nth_bit(bit_position) as usize)
             .sum()
-    }
-
-    fn get_most_common_bit(&self, bit_position: u8) -> bool {
-        let threshold = self.len() / 2;
-        let count = self.count_bits_at_position(bit_position);
-        count >= threshold
+            / self.len()
     }
 
     fn calculate_gamma(&self, number_of_bits: u8) -> u64 {
+        let threshold = self.len() / 2;
         let mut result: u64 = 0;
         for n in 0..number_of_bits {
-            if self.get_most_common_bit(n) {
+            if self.count_bits_at_position(n) > threshold {
                 result |= 1 << n;
             }
         }
